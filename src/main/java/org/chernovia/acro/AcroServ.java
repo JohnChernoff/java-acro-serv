@@ -13,6 +13,10 @@ public class AcroServ extends ZugManager {
     ZugUser admin = new ZugUser(null,new ZugUser.UniqueName("admin", ZugAuthSource.local));
 
     public static void main(final String[] args) {
+        try {
+            AcroBot.loadWords("wordlist_by_letter_and_pos.json");
+            log("Loaded acrobot word list");
+        } catch (Exception e) { log(Level.SEVERE, e.getMessage()); }
         List<String> hosts = new ArrayList<>(Arrays.asList(args).subList(2, args.length));
         AcroServ serv = new AcroServ(ZugServ.ServType.WEBSOCK_JAVALIN, Integer.parseInt(args[0]),hosts);
         ZugManager.setLoggingLevel(args[1].equals("debug") ? Level.FINE : Level.INFO);

@@ -11,6 +11,8 @@ public class AcroPlayer extends Occupant {
 
     int points = 0;
 
+    int idle = 0;
+
     Acro currentAcro;
 
     List<List<Acro>> histories = new ArrayList<>();
