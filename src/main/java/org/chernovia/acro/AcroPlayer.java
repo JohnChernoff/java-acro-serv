@@ -31,4 +31,8 @@ public class AcroPlayer extends Occupant {
         return super.toJSON(scopes).put(AcroField.points, points);
     }
 
+    public AcroUser getAcroUser() {
+        return (AcroUser) getUser();
+    }
+
 }

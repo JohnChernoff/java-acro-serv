@@ -7,25 +7,30 @@ import java.util.*;
 import java.util.logging.Level;
 
 public class AcroServ extends ZugManager {
-
+    public static AcroBase acroBase;
+    public static List<AcroTopic> topics;
     static final String DEF_LETTER_FILE = "deflet";
 
     ZugUser admin = new ZugUser(null,new ZugUser.UniqueName("admin", ZugAuthSource.local));
 
+    //args: port db_uri, db_usr, db_pwd, db_name, debug, hosts...
     public static void main(final String[] args) {
         try {
             AcroBot.loadWords("wordlist_by_letter_and_pos.json");
             log("Loaded acrobot word list");
+            acroBase = new AcroBase(args[1], args[2], args[3], args[4]);
+            log("Connected to " + args[1]);
         } catch (Exception e) { log(Level.SEVERE, e.getMessage()); }
-        List<String> hosts = new ArrayList<>(Arrays.asList(args).subList(2, args.length));
-        AcroServ serv = new AcroServ(ZugServ.ServType.WEBSOCK_JAVALIN, Integer.parseInt(args[0]),hosts);
-        ZugManager.setLoggingLevel(args[1].equals("debug") ? Level.FINE : Level.INFO);
+        List<String> hosts = new ArrayList<>(Arrays.asList(args).subList(6, args.length));
+        log("Hosts: " + hosts);
+        AcroServ serv = new AcroServ(ZugServ.ServType.WEBSOCK_JAVALIN, "acrosrv", Integer.parseInt(args[0]),hosts);
+        ZugManager.setLoggingLevel(args[5].equals("debug") ? Level.FINE : Level.INFO);
         serv.getServ().startSrv();
         serv.startPings(20000);
     }
 
-    public AcroServ(ZugServ.ServType type, int port, List<String> hosts) {
-        super(type, port, hosts, null);
+    public AcroServ(ZugServ.ServType type, String ep, int port, List<String> hosts) {
+        super(type, port, ep, hosts, null);
         addOrGetArea(new AcroGame("Guest Grotto",admin,this,DEF_LETTER_FILE,30,60,30,true,true));
         addOrGetArea(new AcroGame("Guest Grotto (Rapid)",admin,this,DEF_LETTER_FILE,20,16,6,true,true));
         addOrGetArea(new AcroGame("Classical Cove",admin,this,DEF_LETTER_FILE,30,60,30,false,true));
@@ -35,7 +40,7 @@ public class AcroServ extends ZugManager {
 
     @Override
     public Optional<ZugUser> handleCreateUser(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) {
-        return Optional.of(new ZugUser(conn, uName));
+        return Optional.of(new AcroUser(conn, uName));
     }
 
     @Override

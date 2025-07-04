@@ -9,7 +9,7 @@ import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-//TODO: topics, database
+//TODO: topics
 
 public class AcroGame extends ZugArea {
     enum AcroOption { acroTime, voteTime, acroBaseDisplayTime, acroDisplayTime, nextRoundTime, topicTime, summaryTime, skipTime,
@@ -195,6 +195,13 @@ public class AcroGame extends ZugArea {
 
     public void endGame(List<AcroPlayer> winners) {
         for (AcroPlayer winner : winners) spam(winner.getName() + " wins!");
+        for (AcroPlayer player : getPlayers()) {
+            player.getAcroUser().points += player.points;
+            player.getAcroUser().games++;
+            player.getAcroUser().acros += player.history.size();
+            if (winners.contains(player)) player.getAcroUser().wins++;
+            AcroServ.acroBase.updateUser(player.getAcroUser());
+        }
         pm().newPhase(AcroPhase.summarizing,om().getInt(AcroOption.summaryTime)).thenRun(this::newGame);
     }
 
@@ -224,6 +231,7 @@ public class AcroGame extends ZugArea {
                 acro.author.points += currentAcro.size();
                 for (AcroPlayer voter : acro.votes) voter.points += om().getInt(AcroOption.voteBonus);
             }
+            if (!acro.author.isBot()) AcroServ.acroBase.updateAcro(acro);
         }
     }
 
