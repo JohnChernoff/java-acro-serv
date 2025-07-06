@@ -20,6 +20,7 @@ public class AcroServ extends ZugManager {
             log("Loaded acrobot word list");
             acroBase = new AcroBase(args[1], args[2], args[3], args[4]);
             log("Connected to " + args[1]);
+            topics = acroBase.loadTopics(); log("Loaded topics");
         } catch (Exception e) { log(Level.SEVERE, e.getMessage()); }
         List<String> hosts = new ArrayList<>(Arrays.asList(args).subList(6, args.length));
         log("Hosts: " + hosts);
@@ -75,6 +76,9 @@ public class AcroServ extends ZugManager {
         } else if (equalsType(type,AcroMsg.newVote)) {
             getPlayer(user,dataNode).ifPresent(player ->
                     player.getGame().registerVote(player,getTxtNode(dataNode,AcroField.vote).orElse("")));
+        } else if (equalsType(type,AcroMsg.newTopic)) {
+            getPlayer(user,dataNode).ifPresent(player ->
+                    player.getGame().newTopic(player,getTxtNode(dataNode,AcroField.topic).orElse("")));
         }
     }
 }

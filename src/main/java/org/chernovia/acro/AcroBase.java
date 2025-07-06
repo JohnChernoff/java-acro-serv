@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.ZugFields;
 import org.chernovia.lib.zugserv.ZugUtils;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +82,7 @@ public class AcroBase {
     }
 
     public void updateUser(AcroUser user) {
+        if (user.getSource() == ZugAuthSource.bot) return;
         if (!recordGuests && user.isGuest()) return;
         try {
             PreparedStatement ps;

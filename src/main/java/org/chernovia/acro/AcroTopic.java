@@ -12,4 +12,9 @@ public class AcroTopic {
         this.minLetters = minLetters;
         this.maxLetters = maxLetters;
     }
+
+    @Override
+    public String toString() {
+        return topic + " " + category + " " + minLetters + " " + maxLetters;
+    }
 }
