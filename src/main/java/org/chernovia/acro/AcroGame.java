@@ -41,7 +41,7 @@ public class AcroGame extends ZugArea {
                 OptionsManager.createOption(AcroOption.maxLetters,7,3,24,1,"Max Letters","Maximum Acro Letters"),
                 OptionsManager.createOption(AcroOption.voteBonus,1,0,4,1,"Vote Bonus","Winning Acro Vote Bonus"),
                 OptionsManager.createOption(AcroOption.speedBonus,2,0,8,1,"Speed Bonus","Fastest Acro Bonus"),
-                OptionsManager.createOption(AcroOption.maxPlayerIdle,3,0,24,1,"Max Player Idle","Maximum Rounds of Player Idling"),
+                OptionsManager.createOption(AcroOption.maxPlayerIdle,5,0,24,1,"Max Player Idle","Maximum Rounds of Player Idling"),
                 OptionsManager.createOption(AcroOption.maxGameIdle,3,0,24,1,"Max Game Idle","Maximum Rounds of Game Idling"),
                 OptionsManager.createOption(AcroOption.adult,adult,"Adult Themes","Adult Topics/Acros"),
                 OptionsManager.createOption(AcroOption.winnerChooseTopic,true,"Winner Topics","Winner chooses next topic"),
@@ -147,7 +147,6 @@ public class AcroGame extends ZugArea {
             e.printStackTrace();
             return null;
         }
-
     }
 
     void newGame() {
@@ -193,15 +192,19 @@ public class AcroGame extends ZugArea {
         } else nextRound();
     }
 
+    private void checkIdle() {
+        getPlayers().forEach(player -> {
+            player.currentAcro = null;
+            if (player.idle++ > om().getInt(AcroOption.maxPlayerIdle)) {
+                spam(player.getName() + " has been ejected for idleness.");
+                kick(player);
+            }
+        });
+    }
+
     private void nextRound() {
         topicChooser = null;
-        getPlayers().forEach(player -> {
-                    player.currentAcro = null;
-                    if (player.idle++ > om().getInt(AcroOption.maxPlayerIdle)) {
-                        dropOccupant(player);
-                        spam(player.getName() + " has been ejected for idleness.");
-                    }
-                });
+        checkIdle();
         makeAcro(ThreadLocalRandom.current().nextInt(om().getInt(AcroOption.minLetters),om().getInt(AcroOption.maxLetters)+1));
         spam("Round " + round + ": enter your acros!  You have " + om().getInt(AcroOption.acroTime) + " seconds.");
         pm().newPhase(AcroPhase.composing, om().getInt(AcroOption.acroTime) * 1000, ZugUtils.newJSON()
