@@ -9,15 +9,23 @@ import java.util.logging.Level;
 public class AcroServ extends ZugManager {
     public static AcroBase acroBase;
     public static List<AcroTopic> topics;
-    static final String DEF_LETTER_FILE = "deflet";
+    public static final String DEF_LETTER_FILE = "deflet";
 
     ZugUser admin = new ZugUser(null,new ZugUser.UniqueName("admin", ZugAuthSource.local));
+
+    public static void loadWords() throws Exception {
+        AcroBot.loadWords("res/wordlist_by_letter_and_pos.json");
+        AcroBot.loadPhrasalVerbs("res/verbs.json");
+        AcroBot.loadCorporaWordList("res/nouns.json", "nouns", "noun");
+        AcroBot.loadCorporaWordList("res/adjs.json", "adjs", "adj");
+        AcroBot.loadCorporaWordList("res/adverbs.json", "adverbs", "adv");
+        log("Loaded acrobot word list");
+    }
 
     //args: port db_uri, db_usr, db_pwd, db_name, debug, hosts...
     public static void main(final String[] args) {
         try {
-            AcroBot.loadWords("wordlist_by_letter_and_pos.json");
-            log("Loaded acrobot word list");
+            loadWords();
             acroBase = new AcroBase(args[1], args[2], args[3], args[4]);
             log("Connected to " + args[1]);
             topics = acroBase.loadTopics(); log("Loaded topics");

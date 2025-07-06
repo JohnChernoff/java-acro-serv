@@ -79,6 +79,7 @@ public class AcroGame extends ZugArea {
     }
 
     public void registerAcro(AcroPlayer player, String acro) {
+        //ZugManager.log("Registering Acro: " + acro + " for: " + getCurrentAcro() + ", round: " + round);
         if (pm().getPhase() == AcroPhase.composing) {
             player.idle = 0;
             String[] words = acro.toUpperCase().split("\\s+");
@@ -110,7 +111,7 @@ public class AcroGame extends ZugArea {
         }
     }
 
-    private void makeAcro(int numlets) {
+    public void makeAcro(int numlets) {
         currentAcro.clear();
         int t = letters.stream().map(l -> l.prob).reduce(0, Integer::sum);
         for (int n=0; n<numlets; n++) {
@@ -195,7 +196,7 @@ public class AcroGame extends ZugArea {
     private void checkIdle() {
         getPlayers().forEach(player -> {
             player.currentAcro = null;
-            if (player.idle++ > om().getInt(AcroOption.maxPlayerIdle)) {
+            if (!player.isBot() && player.idle++ > om().getInt(AcroOption.maxPlayerIdle)) {
                 spam(player.getName() + " has been ejected for idleness.");
                 kick(player);
             }
@@ -211,7 +212,7 @@ public class AcroGame extends ZugArea {
                         .put(AcroField.acro, getCurrentAcro())
                         .put(AcroField.topic, currentTopic)
                 ).thenRun(() -> { //spam("Generating bot acros...");
-                    for (AcroPlayer bot : getBots()) registerAcro(bot,AcroBot.generateStructuredAcro(getCurrentAcro()));
+                    for (AcroPlayer bot : getBots()) registerAcro(bot,AcroBot.generateSafeStructuredAcro(getCurrentAcro()));
                     spam("Round " + round + ": enter your votes! You have " + om().getInt(AcroOption.voteTime) + " seconds.");
                     initVoting();
                     if (getCurrentAcros().isEmpty()) {
