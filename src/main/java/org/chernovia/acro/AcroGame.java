@@ -8,8 +8,9 @@ import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.logging.Level;
 
-//TODO: topics
+//TODO: database stuff
 
 public class AcroGame extends ZugArea {
     enum AcroOption { acroTime, voteTime, acroBaseDisplayTime, acroDisplayTime, topicTime, summaryTime, skipTime,
@@ -25,7 +26,8 @@ public class AcroGame extends ZugArea {
     String currentTopic = AcroField.noTopic;
     AcroPlayer topicChooser = null;
 
-    public AcroGame(String t, ZugUser c, AreaListener l, String letterFile, int winPoints, int acroTime, int voteTime, boolean allowGuests, boolean adult) {
+    public AcroGame(String t, ZugUser c, AreaListener l, String letterFile,
+                    int winPoints, int acroTime, int voteTime, int topicTime, boolean allowGuests, boolean adult) {
         super(t, c, l,new AreaConfig(allowGuests,false,false,true,true));
         setMaxOccupants(30);
         setOptionsManager(new OptionsManager(
@@ -33,7 +35,7 @@ public class AcroGame extends ZugArea {
                 OptionsManager.createOption(AcroOption.voteTime,voteTime,15,60,1,"Vote Time","Voting Time (in seconds)"),
                 OptionsManager.createOption(AcroOption.acroBaseDisplayTime,2000,1000,24000,250,"Base Acro Display Time","Base Acro Display Time (in millis)"),
                 OptionsManager.createOption(AcroOption.acroDisplayTime,2000,1000,8000,250,"Acro Display Time","Individual Acro Display Time (in millis)"),
-                OptionsManager.createOption(AcroOption.topicTime,12,5,60,1,"Topic Time","Topic Selection Time (in seconds)"),
+                OptionsManager.createOption(AcroOption.topicTime,topicTime,5,60,1,"Topic Time","Topic Selection Time (in seconds)"),
                 OptionsManager.createOption(AcroOption.summaryTime,30,15,60,1,"Summary Time","Game Summary Time (in seconds)"),
                 OptionsManager.createOption(AcroOption.skipTime,2000,250,12000,250,"Skip Time","Phase Skip Time (in millis)"),
                 OptionsManager.createOption(AcroOption.victoryPoints,winPoints,3,60,1,"Victory Points","Points required to win"),
@@ -145,15 +147,15 @@ public class AcroGame extends ZugArea {
             } else return pm().newPhase(AcroPhase.topicSelect, om().getInt(AcroOption.topicTime) * 1000,
                     topicChooser.toJSON().set(AcroField.topics,arrayNode));
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            ZugManager.log(Level.WARNING,"Exception in newTopics: " + e.getMessage());
+            return pm().newPhase(AcroPhase.skipping, om().getInt(AcroOption.skipTime));
         }
     }
 
     void newGame() {
         ZugManager.log("New Game: " + getTitle());
         initGame();
-        spam(AcroMsg.newGame);
+        spam(AcroMsg.newGame,toJSON(ZugScope.all));
         startNextRound();
     }
 
@@ -177,6 +179,7 @@ public class AcroGame extends ZugArea {
     public boolean isIdle() { return roundIdle >=  om().getInt(AcroOption.maxGameIdle); }
 
     void initGame() {
+        round = 0;
         for (AcroPlayer player : getPlayers()) {
             if (!player.history.isEmpty()) player.histories.add(player.history);
             player.history.clear();
@@ -257,7 +260,7 @@ public class AcroGame extends ZugArea {
                 if (winners.contains(player)) user.wins++;
                 AcroServ.acroBase.updateUser(user);
             }
-        } catch (Exception e) { e.printStackTrace();
+        } catch (Exception e) { //e.printStackTrace();
             ZugManager.log("updatePlayers error: " + e.getMessage());
         }
     }
