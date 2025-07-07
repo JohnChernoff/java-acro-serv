@@ -44,6 +44,7 @@ public class Acro implements JSONifier {
             for (AcroPlayer vote : votes) arrayNode.add(vote.toJSON());
             json.set(AcroField.votes, arrayNode);
             json.put(AcroField.speedy,speedy);
+            json.put(AcroField.winner,winner);
         }
         return json;
     }
