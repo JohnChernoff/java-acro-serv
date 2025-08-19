@@ -4,13 +4,12 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
-import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
-//TODO: database stuff
+//TODO: database stuff, client update round
 
 public class AcroGame extends ZugArea {
     enum AcroOption { acroTime, voteTime, acroBaseDisplayTime, acroDisplayTime, topicTime, summaryTime, skipTime,
@@ -93,6 +92,7 @@ public class AcroGame extends ZugArea {
                     tell(player,AcroMsg.badAcro); return;
                 }
             }
+            if (player.currentAcro == null) spam("Acro # " +  (getCurrentAcros().size() + 1) + " Received");
             player.currentAcro = new Acro(player,acro,currentTopic,round,System.currentTimeMillis() - pm().getPhaseStamp());
             tell(player,AcroMsg.acroConfirmed,player.currentAcro.toJSON());
         } else tell(player,"Bad phase: " + pm().getPhase());
@@ -104,7 +104,7 @@ public class AcroGame extends ZugArea {
                     if (acro.author == player) {
                         tell(player,"You cannot vote for yourself."); //TODO - make message?
                     } else {
-                        acro.votes.add(player);
+                        player.currentVote = acro; //acro.votes.add(player);
                         player.idle = 0;
                         tell(player,AcroMsg.voteConfirmed,acro.toJSON());
                     }
@@ -154,8 +154,15 @@ public class AcroGame extends ZugArea {
 
     void newGame() {
         ZugManager.log("New Game: " + getTitle());
-        initGame();
-        spam(AcroMsg.newGame,toJSON(ZugScope.all));
+        currentTopic = AcroField.noTopic;
+        round = 0;
+        for (AcroPlayer player : getPlayers()) {
+            if (!player.history.isEmpty()) player.histories.add(player.history);
+            player.history.clear();
+            player.points = 0;
+            player.idle = 0;
+        }
+        spam(AcroMsg.newGame,toJSON());
         startNextRound();
     }
 
@@ -178,27 +185,19 @@ public class AcroGame extends ZugArea {
 
     public boolean isIdle() { return roundIdle >=  om().getInt(AcroOption.maxGameIdle); }
 
-    void initGame() {
-        round = 0;
-        for (AcroPlayer player : getPlayers()) {
-            if (!player.history.isEmpty()) player.histories.add(player.history);
-            player.history.clear();
-            player.points = 0;
-            player.idle = 0;
-        }
-    }
-
     private void startNextRound() {
         round++;
+        //getPlayers().forEach(player -> player.)
         if (isIdle()) {
             spam("Bah, nobody's playing - going idle.");
             pm().newPhase(AcroPhase.waiting, 999999999).thenRun(this::nextRound);
         } else nextRound();
     }
 
-    private void checkIdle() {
+    private void clearPlayerFlagsAndCheckIdle() {
         getPlayers().forEach(player -> {
             player.currentAcro = null;
+            player.currentVote = null;
             if (!player.isBot() && player.idle++ > om().getInt(AcroOption.maxPlayerIdle)) {
                 spam(player.getName() + " has been ejected for idleness.");
                 kick(player);
@@ -208,12 +207,13 @@ public class AcroGame extends ZugArea {
 
     private void nextRound() {
         topicChooser = null;
-        checkIdle();
+        clearPlayerFlagsAndCheckIdle();
         makeAcro(ThreadLocalRandom.current().nextInt(om().getInt(AcroOption.minLetters),om().getInt(AcroOption.maxLetters)+1));
         spam("Round " + round + ": enter your acros!  You have " + om().getInt(AcroOption.acroTime) + " seconds.");
         pm().newPhase(AcroPhase.composing, om().getInt(AcroOption.acroTime) * 1000, ZugUtils.newJSON()
                         .put(AcroField.acro, getCurrentAcro())
                         .put(AcroField.topic, currentTopic)
+                        .put(AcroField.round, round)
                 ).thenRun(() -> { //spam("Generating bot acros...");
                     for (AcroPlayer bot : getBots()) registerAcro(bot,AcroBot.generateSafeStructuredAcro(getCurrentAcro()));
                     spam("Round " + round + ": enter your votes! You have " + om().getInt(AcroOption.voteTime) + " seconds.");
@@ -227,7 +227,7 @@ public class AcroGame extends ZugArea {
                                 int scoreTime = (getCurrentAcros().size() * om().getInt(AcroOption.acroDisplayTime)) + om().getInt(AcroOption.acroBaseDisplayTime);
                                 pm().newPhase(AcroPhase.scoring,scoreTime, acrosToJSON(false))
                                         .thenRun(() -> {
-                                            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_all));
+                                            spam(ZugServMsgType.updateOccupants,toJSON());
                                             List<AcroPlayer> winners = getWinners();
                                             if (winners.isEmpty()) {
                                                 spam("Next round in " + om().getInt(AcroOption.topicTime) + " seconds");
@@ -272,16 +272,19 @@ public class AcroGame extends ZugArea {
     }
 
     public void tally() {
+        for (AcroPlayer player : getPlayers()) {
+            if (player.currentVote != null) player.currentVote.votes.add(player);
+        }
         getCurrentAcros().stream()
-                .filter(a -> !a.votes.isEmpty())
+                .filter(a -> a.countVotes() > 0)
                 .min((o1, o2) -> (int) (o1.time - o2.time)).ifPresent(acro -> acro.speedy = true);
         int winVotes = getCurrentAcros().stream()
-                .filter(a -> !a.votes.isEmpty())
-                .max(Comparator.comparingInt(o -> o.votes.size())).map(acro -> acro.votes.size()).orElse(0);
-        if (winVotes > 0) getCurrentAcros().stream().filter(a -> a.votes.size() == winVotes)
+                .filter(a -> a.countVotes() > 0)
+                .max(Comparator.comparingInt(Acro::countVotes)).map(Acro::countVotes).orElse(0);
+        if (winVotes > 0) getCurrentAcros().stream().filter(a -> a.countVotes() == winVotes)
                 .min((o1, o2) -> (int) (o1.time - o2.time)).ifPresent(acro -> acro.winner = true);
         for (Acro acro : getCurrentAcros()) {
-            acro.author.points += acro.votes.size();
+            acro.author.points += acro.countVotes();
             if (acro.speedy) acro.author.points += om().getInt(AcroOption.speedBonus);
             if (acro.winner) {
                 acro.author.points += currentAcro.size();
@@ -295,7 +298,7 @@ public class AcroGame extends ZugArea {
     private ObjectNode acrosToJSON(boolean hideAuthor) {
         ObjectNode acroNode = ZugUtils.newJSON();
         ArrayNode acroArray = ZugUtils.newJSONArray();
-        for (Acro acro : getCurrentAcros()) acroArray.add(hideAuthor ? acro.toJSON() : acro.toJSON(Acro.Scope.scoring));
+        for (Acro acro : getCurrentAcros()) acroArray.add(hideAuthor ? acro.toJSON() : acro.toJSON2(Acro.Scope.scoring));
         return acroNode.set(AcroField.acros, acroArray);
     }
 
@@ -316,8 +319,8 @@ public class AcroGame extends ZugArea {
     }
 
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
-        return super.toJSON(scopes)
+    public ObjectNode toJSON2(Enum<?>... scopes) {
+        return super.toJSON2(scopes)
                 .put(AcroField.round, round)
                 .put(AcroField.acro,getCurrentAcro());
     }

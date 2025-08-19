@@ -104,7 +104,7 @@ public class AcroBase {
             PreparedStatement ps;
             ps = conn.prepareStatement("INSERT INTO acros (txt,votes,time,date,winner,topic,speedy,author) VALUES (?,?,?,?,?,?,?,?)");
             ps.setString(1,acro.txt);
-            ps.setInt(2,acro.votes.size());
+            ps.setInt(2,acro.countVotes());
             ps.setFloat(3,acro.time / 1000f);
             ps.setDate(4,new Date(System.currentTimeMillis()));
             ps.setBoolean(5,acro.winner);

@@ -15,6 +15,8 @@ public class AcroPlayer extends Occupant {
 
     Acro currentAcro;
 
+    Acro currentVote;
+
     List<List<Acro>> histories = new ArrayList<>();
 
     List<Acro> history = new ArrayList<>();
@@ -27,8 +29,8 @@ public class AcroPlayer extends Occupant {
         return (AcroGame) getArea();
     }
 
-    public ObjectNode toJSON(List<String> scopes) {
-        return super.toJSON(scopes).put(AcroField.points, points);
+    public ObjectNode toJSON2(Enum<?>... scopes) {
+        return super.toJSON2(scopes).put(AcroField.points, points);
     }
 
     public AcroUser getAcroUser() {

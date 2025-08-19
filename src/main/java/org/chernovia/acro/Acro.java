@@ -31,14 +31,18 @@ public class Acro implements JSONifier {
         return time/1000f;
     }
 
+    public int countVotes() {
+        return author.currentVote != null ? votes.size() : 0;
+    }
+
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode json = ZugUtils.newJSON()
                 .put(AcroField.acroId,id)
                 .put(AcroField.round, round)
                 .put(AcroField.acroTxt, txt)
                 .put(AcroField.time, getTimeInSeconds());
-        if (hasScope(scopes, Scope.scoring, true)) {
+        if (hasScope(Scope.scoring, true, scopes)) {
             json.set(AcroField.author,author.toJSON());
             ArrayNode arrayNode = ZugUtils.newJSONArray();
             for (AcroPlayer vote : votes) arrayNode.add(vote.toJSON());
